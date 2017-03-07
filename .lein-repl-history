@@ -1,0 +1,82 @@
+exit
+(run-proxy "/api" 3100 "http://localhost/whaterver")
+(run-proxy "/api" 3100 "http://localhost/whaterver" {})
+exit
+(run-proxy "/api" 3100 "http://localhost/whaterver" {})
+exit
+(run-proxy "/api" 3100 "http://localhost/whaterver" {})
+exit
+(run-proxy "/api" 3100 "http://localhost/whaterver" {})
+exit
+(run-proxy "/api" 3100 "http://localhost/whaterver" {})
+(onelog.core/set-warn!)
+(onelog.core/set-debug!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+ 28    (start-figwheel!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+exit
+(start-figwheel!)
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+kjjk
+(onelog.core/set-debug!)
+kykkkj
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+exit
+(onelog.core/set-debug!)
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+exit
+(start-figwheel!)
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+yyj
+(ns test-db
+    (:require [konserve.filestore :refer [new-fs-store]]
+              [konserve.core :as k]
+              [clojure.core.async :as async :refer [<!!]]))
+(def store (<!! (new-fs-store "resouces/store")))
+(def store (<!! (new-fs-store "resources/store")))
+(<!! (k/assoc-in store [:bar] 42))
+(<!! (k/update-in store [:bar] inc))
+(<!! (k/get-in store [:bar]))
+exit
+(def store (<!! (new-fs-store "resources/store")))
+(ns test-db
+    (:require [konserve.filestore :refer [new-fs-store]]
+              [konserve.core :as k]
+              [clojure.core.async :as async :refer [<!!]]))
+(def store (<!! (new-fs-store "resources/store")))
+(<!! (k/get-in store [:bar]))
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+kk

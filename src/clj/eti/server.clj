@@ -1,0 +1,75 @@
+(ns eti.server
+  (:import [java.net URI] )
+  (:require [eti.handler :refer [handler]]
+            [config.core :refer [env]]
+            [ring.middleware.logger :as logger]
+            [compojure.core :refer [defroutes rfn] ]
+            [ring.middleware.reload :refer [wrap-reload]]
+            [ring.middleware.multipart-params :refer [wrap-multipart-params]]
+            [clojure.tools.logging :as log]
+            [ring.middleware.logger :as logger]
+            [ring.middleware.cookies :refer [wrap-cookies]]
+            [clojure.string          :refer [join split]]
+            [org.httpkit.client :as http]
+            [ring.adapter.jetty :refer [run-jetty]])
+  (:gen-class))
+
+(defn -main [& args]
+   (let [port (Integer/parseInt (or (env :port) "3000"))]
+     (run-jetty (logger/wrap-with-logger handler) {:port port :join? false})))
+
+(defn prepare-cookies
+  "Removes the :domain and :secure keys and converts the :expires key (a Date)
+  to a string in the ring response map resp. Returns resp with cookies properly
+  munged."
+  [resp]
+  (let [prepare #(-> (update-in % [1 :expires] str)
+                     (update-in [1] dissoc :domain :secure))]
+    (assoc resp :cookies (into {} (map prepare (:cookies resp))))))
+
+(defn slurp-binary
+  "Reads len bytes from InputStream is and returns a byte array."
+  [^java.io.InputStream is len]
+  (with-open [rdr is]
+    (let [buf (byte-array len)]
+      (.read rdr buf)
+      buf)))
+
+(defn wrap-proxy
+  "Proxies requests from proxied-path, a local URI, to the remote URI at
+  remote-base-uri, also a string."
+  [handler ^String proxied-path remote-base-uri & [http-opts]]
+  (wrap-cookies
+			(fn [req]
+        (log/debug (str "path: " proxied-path))
+			 (if (.startsWith ^String (:uri req) proxied-path)
+				 (let [rmt-full   (URI. (str remote-base-uri "/"))
+							 rmt-path   (URI. (.getScheme    rmt-full)
+																(.getAuthority rmt-full)
+																(.getPath      rmt-full) nil nil)
+							 lcl-path   (URI. (subs (:uri req) (.length proxied-path)))
+							 remote-uri (.resolve rmt-path lcl-path) ]
+					 (-> (merge {:method (:request-method req)
+											 :url (str remote-uri "?" (:query-string req))
+											 :headers (dissoc (:headers req) "host" "content-length")
+											 :body (if-let [len (get-in req [:headers "content-length"])]
+															 (slurp-binary (:body req) (Integer/parseInt len)))
+											 :follow-redirects true
+											 :throw-exceptions false
+											 :as :stream} http-opts)
+							 http/request
+               deref
+							 #_prepare-cookies))
+				 (handler req)))))
+(defroutes routes
+  (rfn request (str request)) )
+
+(defn run-proxy
+  [listen-path listen-port remote-uri http-opts]
+  (-> ;(constantly {:status 404 :headers {} :body "404 - not found"})
+      ;(wrap-proxy listen-path remote-uri http-opts)
+      #'routes
+       wrap-reload
+       wrap-multipart-params
+       logger/wrap-with-logger
+      (run-jetty {:port listen-port}) ))
