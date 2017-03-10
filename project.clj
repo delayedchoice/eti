@@ -15,6 +15,7 @@
                  [ring.middleware.logger "0.5.0"]
                  [yogthos/config "0.8"]
                  [http-kit "2.2.0"]
+                 [org.clojure/data.json "0.2.6"]
                  [ring "1.4.0"]
                  [org.clojure/core.async "0.3.441"]
                  [io.replikativ/konserve "0.4.8"]
