@@ -1,8 +1,17 @@
 # eti
+(ns test-db (:require [konserve.filestore :refer [new-fs-store]] [konserve.core :as k] [clojure.core.async :as async :refer [<!!]]))
+
 
 A [re-frame](https://github.com/Day8/re-frame) application designed to ... well, that part is up to you.
 
 ## Development Mode
+(use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+(ns test-db (:require [konserve.filestore :as fs] [konserve.core :as k] [clojure.core.async :as async :refer [<!!]]))
+(def store (<!! (fs/new-fs-store "resources/store")))
+(<!! (fs/list-keys store))
+(<!! (k/get-in store ["/foo?test"]))
 
 ### Compile css:
 

@@ -113,3 +113,44 @@ exit
 jkkkj
 (<!! (k/get-in store ["/foo?test"]))
 (<!! (fs/list-keys store))
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+kjjjj
+(ns test-db (:require [konserve.filestore :as fs] [konserve.core :as k] [clojure.core.async :as async :refer [<!!]]))
+(def store (<!! (fs/new-fs-store "resources/store")))
+(<!! (fs/list-keys store))
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+(ns test-db (:require [konserve.filestore :as fs] [konserve.core :as k] [clojure.core.async :as async :refer [<!!]]))
+(def store (<!! (fs/new-fs-store "resources/store")))
+(<!! (fs/list-keys store))
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+(ns test-db (:require [konserve.filestore :as fs] [konserve.core :as k] [clojure.core.async :as async :refer [<!!]]))
+(def store (<!! (fs/new-fs-store "resources/store")))
+(<!! (fs/list-keys store))
+kk
+1
+(<!! (fs/list-keys store))
+(<!! (k/get-in store ["/foo?test"]))
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+(ns test-db (:require [konserve.filestore :as fs] [konserve.core :as k] [clojure.core.async :as async :refer [<!!]]))
+(def store (<!! (fs/new-fs-store "resources/store")))
+(<!! (fs/list-keys store))
+(<!! (k/get-in store ["/foo?test"]))
+(<!! (fs/list-keys store))
+(<!! (k/get-in store ["/foo?test"]))
+(type (<!! (k/get-in store ["/foo?test"])))

@@ -20,11 +20,15 @@
                  [org.clojure/core.async "0.3.441"]
                  [io.replikativ/konserve "0.4.8"]
                  [org.clojure/tools.logging "0.3.1"]
+                 [ring/ring-json "0.4.0"]
                  ]
 
   :plugins [[lein-cljsbuild "1.1.4"]
+            [lein-ring "0.11.0"]
             [lein-less "1.7.5"]]
 
+
+  :ring {:handler eti.server/handler}
   :min-lein-version "2.5.3"
 
   :source-paths ["src/clj"]

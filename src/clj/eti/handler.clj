@@ -1,4 +1,5 @@
 (ns eti.handler
+  (:import java.net.URL)
   (:require [ring.middleware.multipart-params :refer [wrap-multipart-params]]
             [ring.adapter.jetty]
             [ring.middleware.logger :as logger]
@@ -16,30 +17,14 @@
             [konserve.core :as k]
             [clojure.data.json :as json]
             [clojure.core.async :as async :refer [<!!]]
+            [ring.middleware.json :refer [wrap-json-body]]
             ))
 
-(def store (<!! (fs/new-fs-store "resources/store")))
+(def cache (<!! (fs/new-fs-store "resources/store")))
 
-(defn get-body-from-stream [resp len]
-  (let [body (resp :body) ]
-    (with-open [rdr body]
-     (let [buf (byte-array len)]
-       (.read rdr buf)
-         (String. buf)))))
+(defn store [id v]
+  (<!! (k/assoc-in cache [id] v)))
 
-(defn body-as-string [ctx]
-  (if-let [body (get-in ctx [:body])]
-    (let [rv (condp instance? body
-              java.lang.String body
-              (slurp (io/reader body)))
-          _ (log/debug "extracred-body: " rv)]
-      rv)))
-
-(defn get-body [resp len]
-  (let [source (resp :source)]
-    (if (= source :cache)
-        (resp :body)
-        (get-body-from-stream resp len))))
 
 (defn build-path-and-query-string [req]
   (let [q (:query-string req)
@@ -48,51 +33,108 @@
                      "") ]
     (str (:uri req) q-string)))
 
-(defn build-url [proxied-host proxied-port req]
+
+(defn get-body [req]
+  (if-let [body (get-in req [:body])]
+    (let [_ (log/debug "raw-body: " body)
+          _ (log/debug "type: " (type body))
+          rv (condp instance? body
+                    clojure.lang.PersistentArrayMap body
+                    java.lang.String body
+                    (slurp (io/reader body)))
+          _ (log/debug "extracred-body: " rv)]
+      rv)))
+
+(defn parse-id [ctx]
+  (let [_ (log/debug "ctx2: " ctx) req (:request ctx)
+        ky (build-path-and-query-string req)
+        ky (apply str (drop 4 ky))]
+    [false {::id ky}]))
+
+(defn parse-json [ctx ky]
+  (let [_ (log/debug "ctx3: " ctx)]
+    (when (#{:put :post} (get-in ctx [:request :request-method]))
+     (try
+       (if-let [body (get-body (:request ctx ))]
+         (let [data body #_(json/read-str body :key-fn keyword)]
+           [false {ky data}])
+         {:message "No body"})
+       (catch Exception e
+         (.printStackTrace e)
+         {:message (format "IOException: %s" (.getMessage e))})))))
+
+(defn check-content-type [ctx content-types]
+  (if (#{:put :post} (get-in ctx [:request :request-method]))
+    (or
+     (some #{(get-in ctx [:request :headers "content-type"])}
+           content-types)
+     [false {:message "Unsupported Content-Type"}])
+    true))
+
+(defn build-proxy-url [proxied-host proxied-port req]
   (str "http://"
        proxied-host
        ":"
        proxied-port
        (build-path-and-query-string req)))
 
+(defn build-entry-url [request id]
+  (URL. (format "%s://%s:%s%s/%s"
+                (name (:scheme request))
+                (:server-name request)
+                (:server-port request)
+                (:uri request)
+                id)))
+
 (defn load-from-cache [req]
-  (let [hit (<!! (k/get-in store [(build-path-and-query-string req)]))]
+  (let [hit (<!! (k/get-in cache [(build-path-and-query-string req)]))
+        _ (log/debug "from-cache: " hit)]
     (if hit
        hit
-        nil)))
+       nil)))
 
+(defresource list-resource
+  :available-media-types ["application/json"]
+  :allowed-methods [:get :post]
+  :known-content-type? #(check-content-type % ["application/json"])
+  :malformed? #(parse-json % ::body)
+  :post! #(let [id (build-path-and-query-string (:request %))]
+            (<!! (k/assoc-in cache [id] (get (::body %))))
+            {::id id})
+  :post-redirect? true
+  :location #(build-entry-url (:request %) (::id %))
+  :handle-ok #(map (fn [id] (let [id (str id)
+                                  id (subs id 3 (- (count id) 2))
+                                  _ (log/debug "id " id)]
+                              (str (build-entry-url (get % :request) id))))
+                   (<!! (fs/list-keys cache))))
+
+(defresource entry-resource
+  :uri-too-long? #(parse-id %)
+  :allowed-methods [:get :put :delete]
+  :known-content-type? #(check-content-type % ["application/json"])
+  :exists? (fn [ctx]
+             (let [_ (log/debug "id1: " (::id ctx))
+                   e (<!! (k/get-in cache [(::id ctx)]))
+                   _ (log/debug "e: " e)]
+                    (if-not (nil? e)
+                      {::entry e})))
+  :existed? (fn [ctx] (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache)))))
+  :available-media-types ["application/json"]
+  :handle-ok ::entry
+  :delete! (fn [ctx] (k/assoc-in cache [(::id ctx)] nil))
+  :malformed? #(parse-json % ::data)
+  :can-put-to-missing? false
+  :put! #(k/assoc-in cache [(::id %)] (::data %))
+  :new? (fn [ctx] (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache))))))
+
+; ([\/\w \.-]*)*\/?\??(?:&?[^=&]*=[^=&]*)*$)
 (defroutes proxy-route
-  (GET "/eti" []
-    (resource :available-media-types ["application/json"]
-              :handle-ok
-                (fn [ctx]
-                  (let [kys (<!! (fs/list-keys store))
-                        entries (for [ky kys] [(first ky) (<!! (k/get-in store ky))] )]
-                    (into {} entries)))))
-  (POST "/eti/*" []
-       (resource
-        :allowed-methods [:post]
-        :available-media-types ["application/json"]
-        :post! (fn [ctx] (let [req (:request ctx)]
-                           (log/debug "req:  " req)
-                           (log/debug "post-key: " (build-path-and-query-string req ))
-                           (let [;len (-> req :headers (get "content-length" ) Integer/parseInt )
-                                 body (json/read-str (str "{" (body-as-string req) "}") :key-fn keyword)
-                                 req (assoc req :body body)
-                                 _ (log/debug "body: " body)
-                                 req (dissoc req :async-channel)
-                                 ky  (build-path-and-query-string req)
-                                 ky  (apply str (drop 4 ky))
-                                 kyky (keyword ky)
-                                 _ (log/debug "key: " (keyword  ky ))
-                                _ (log/debug "member: " (get body kyky ) )
-                                 v (<!! (k/assoc-in store [ky] (get body kyky )))]
-                            (log/debug "v: " v)
-                            v)))
-        :new? (fn [_] true)))
+  (ANY "/eti/*" [] entry-resource)
+  (ANY "/eti" [] list-resource)
   (rfn req
     (let [out-req {:method (:request-method req)
-                   :url (build-url "localhost" "3000" req)
+                   :url (build-proxy-url "localhost" "3000" req)
                    :follow-redirects true
                    :throw-exceptions false
                    :as :stream }
@@ -100,19 +142,22 @@
                                             @(http/request out-req)]))
         _ (log/debug "response0: " response)
          ;len (-> response :headers :content-length Integer/parseInt)
-				 body (body-as-string response )
+				 body (get-body response )
          _ (log/debug "response1: " response)
          response (assoc response :body body)
-         cache-response (<!! (k/assoc-in store [(build-path-and-query-string req)] response))
+         cache-response (<!! (k/assoc-in cache [(build-path-and-query-string req)] response))
+         _ (log/debug "body " body)
          _ (log/debug "response: " response)
          _ (log/debug "cache-response: " cache-response)]
        body)))
 
 (def dev-handler
   (-> #'proxy-route
+      (wrap-json-body {:keywords? true})
       wrap-reload
       wrap-keyword-params
-      logger/wrap-with-logger))
+      logger/wrap-with-logger
+      (wrap-trace :header :ui)))
 
 (def handler
   (-> proxy-route
