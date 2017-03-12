@@ -7,7 +7,6 @@
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [compojure.core :refer [rfn GET POST defroutes ANY] ]
             [compojure.route :refer [resources]]
-            ;[clojure.java.io :as io]
             [liberator.core :refer [resource defresource]]
             [liberator.dev :refer [wrap-trace]]
             [clojure.tools.logging :as log]
@@ -34,19 +33,20 @@
     (str (:uri req) q-string)))
 
 
-(defn get-body [req]
+(defn get-body-as-string [req]
   (if-let [body (get-in req [:body])]
     (let [_ (log/debug "raw-body: " body)
           _ (log/debug "type: " (type body))
           rv (condp instance? body
-                    clojure.lang.PersistentArrayMap body
                     java.lang.String body
                     (slurp (io/reader body)))
-          _ (log/debug "extracred-body: " rv)]
+          _ (log/debug "extracted-body: " rv)]
       rv)))
 
+
 (defn parse-id [ctx]
-  (let [_ (log/debug "ctx2: " ctx) req (:request ctx)
+  (let [_ (log/debug "ctx-for-id: " ctx)
+        req (:request ctx)
         ky (build-path-and-query-string req)
         ky (apply str (drop 4 ky))]
     [false {::id ky}]))
@@ -55,8 +55,9 @@
   (let [_ (log/debug "ctx3: " ctx)]
     (when (#{:put :post} (get-in ctx [:request :request-method]))
      (try
-       (if-let [body (get-body (:request ctx ))]
-         (let [data body #_(json/read-str body :key-fn keyword)]
+       (if-let [body (get-in (:request ctx ) [:body])]
+         (let [_ (log/debug "body-type: " (type body))
+               data body #_(json/read-str body :key-fn keyword)]
            [false {ky data}])
          {:message "No body"})
        (catch Exception e
@@ -89,9 +90,7 @@
 (defn load-from-cache [req]
   (let [hit (<!! (k/get-in cache [(build-path-and-query-string req)]))
         _ (log/debug "from-cache: " hit)]
-    (if hit
-       hit
-       nil)))
+    hit))
 
 (defresource list-resource
   :available-media-types ["application/json"]
@@ -114,9 +113,9 @@
   :allowed-methods [:get :put :delete]
   :known-content-type? #(check-content-type % ["application/json"])
   :exists? (fn [ctx]
-             (let [_ (log/debug "id1: " (::id ctx))
+             (let [_ (log/debug "id-for-exists: " (::id ctx))
                    e (<!! (k/get-in cache [(::id ctx)]))
-                   _ (log/debug "e: " e)]
+                   _ (log/debug "entity-from-cache: " e)]
                     (if-not (nil? e)
                       {::entry e})))
   :existed? (fn [ctx] (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache)))))
@@ -128,7 +127,6 @@
   :put! #(k/assoc-in cache [(::id %)] (::data %))
   :new? (fn [ctx] (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache))))))
 
-; ([\/\w \.-]*)*\/?\??(?:&?[^=&]*=[^=&]*)*$)
 (defroutes proxy-route
   (ANY "/eti/*" [] entry-resource)
   (ANY "/eti" [] list-resource)
@@ -140,15 +138,13 @@
                    :as :stream }
          response (some identity (lazy-seq [(load-from-cache req)
                                             @(http/request out-req)]))
-        _ (log/debug "response0: " response)
-         ;len (-> response :headers :content-length Integer/parseInt)
-				 body (get-body response )
-         _ (log/debug "response1: " response)
+         _ (log/debug "orig-response: " response)
+				 body (get-body-as-string response )
+         _ (log/debug "body-from-response " body)
          response (assoc response :body body)
+         _  (log/debug "response-to-store: " response)
          cache-response (<!! (k/assoc-in cache [(build-path-and-query-string req)] response))
-         _ (log/debug "body " body)
-         _ (log/debug "response: " response)
-         _ (log/debug "cache-response: " cache-response)]
+         _ (log/debug "inserted-cache-response: " cache-response)]
        body)))
 
 (def dev-handler
@@ -161,4 +157,7 @@
 
 (def handler
   (-> proxy-route
+      (wrap-json-body {:keywords? true})
+      wrap-keyword-params
+      logger/wrap-with-logger
       wrap-multipart-params))

@@ -154,3 +154,5 @@ exit
 (<!! (fs/list-keys store))
 (<!! (k/get-in store ["/foo?test"]))
 (type (<!! (k/get-in store ["/foo?test"])))
+(<!! (k/get-in store ["/foo?test"]))
+(type (<!! (k/get-in store ["/foo?test"])))
