@@ -20,6 +20,7 @@
                  [org.clojure/core.async "0.3.441"]
                  [io.replikativ/konserve "0.4.8"]
                  [org.clojure/tools.logging "0.3.1"]
+								 [day8.re-frame/http-fx "0.1.3"]
                  [ring/ring-json "0.4.0"]
                  ]
 
@@ -28,7 +29,9 @@
             [lein-less "1.7.5"]]
 
 
-  :ring {:handler eti.server/handler}
+  :ring {:handler eti.handler/dev-handler
+         :nrepl {:start? true
+                 :port 9998}}
   :min-lein-version "2.5.3"
 
   :source-paths ["src/clj"]
@@ -40,7 +43,8 @@
   :figwheel {:css-dirs ["resources/public/css"]
              :server-logfile false
 ;             :server-port 3449
-             :ring-handler eti.handler/dev-handler }
+            ; :ring-handler eti.handler/dev-handler
+             }
 
   :less {:source-paths ["less"]
          :target-path  "resources/public/css"}

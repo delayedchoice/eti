@@ -10,6 +10,7 @@
             [liberator.core :refer [resource defresource]]
             [liberator.dev :refer [wrap-trace]]
             [clojure.tools.logging :as log]
+            [liberator.representation :refer [Representation ring-response]]
             [clojure.java.io :as io]
             [org.httpkit.client :as http]
             [konserve.filestore :as fs]
@@ -24,14 +25,12 @@
 (defn store [id v]
   (<!! (k/assoc-in cache [id] v)))
 
-
 (defn build-path-and-query-string [req]
   (let [q (:query-string req)
         q-string (if (> (count q) 0)
                      (str "?" q)
                      "") ]
     (str (:uri req) q-string)))
-
 
 (defn get-body-as-string [req]
   (if-let [body (get-in req [:body])]
@@ -42,7 +41,6 @@
                     (slurp (io/reader body)))
           _ (log/debug "extracted-body: " rv)]
       rv)))
-
 
 (defn parse-id [ctx]
   (let [_ (log/debug "ctx-for-id: " ctx)
@@ -80,6 +78,14 @@
        (build-path-and-query-string req)))
 
 (defn build-entry-url [request id]
+  (URL. (format "%s://%s:%s%s%s"
+                (name (:scheme request))
+                (:server-name request)
+                (:server-port request)
+                "/eti"
+                id)))
+
+(defn build-list-entry-url [request id]
   (URL. (format "%s://%s:%s%s/%s"
                 (name (:scheme request))
                 (:server-name request)
@@ -101,12 +107,13 @@
             (<!! (k/assoc-in cache [id] (get (::body %))))
             {::id id})
   :post-redirect? true
-  :location #(build-entry-url (:request %) (::id %))
-  :handle-ok #(map (fn [id] (let [id (str id)
-                                  id (subs id 3 (- (count id) 2))
-                                  _ (log/debug "id " id)]
-                              (str (build-entry-url (get % :request) id))))
-                   (<!! (fs/list-keys cache))))
+  :location #(build-list-entry-url (:request %) (::id %))
+  :handle-ok #(ring-response {:data  (map (fn [id] (let [id (str id)
+                                                          id (subs id 3 (- (count id) 2))
+                                                          _ (log/debug "id " id)]
+                                                      (str (build-list-entry-url (get % :request) id))))
+                                           (<!! (fs/list-keys cache)) )}
+                            {:headers {"Access-Control-Allow-Origin" "*"}} ))
 
 (defresource entry-resource
   :uri-too-long? #(parse-id %)
@@ -120,11 +127,15 @@
                       {::entry e})))
   :existed? (fn [ctx] (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache)))))
   :available-media-types ["application/json"]
-  :handle-ok ::entry
+  :handle-ok (fn [ctx] (ring-response {:link (str (build-entry-url (get ctx :request) (::id ctx)))
+                                       :entry (ctx ::entry)}
+                                      {:headers {"Access-Control-Allow-Origin" "*"}}))
   :delete! (fn [ctx] (k/assoc-in cache [(::id ctx)] nil))
   :malformed? #(parse-json % ::data)
   :can-put-to-missing? false
-  :put! #(k/assoc-in cache [(::id %)] (::data %))
+  :put! #(let [e (second (<!! (k/assoc-in cache [(::id %)] (::data %) )))]
+           (ring-response {:entry e}
+                          {:headers {"Access-Control-Allow-Origin" "*"}}))
   :new? (fn [ctx] (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache))))))
 
 (defroutes proxy-route
@@ -132,12 +143,11 @@
   (ANY "/eti" [] list-resource)
   (rfn req
     (let [out-req {:method (:request-method req)
-                   :url (build-proxy-url "localhost" "3000" req)
+                   :url (build-proxy-url "localhost" "2999" req)
                    :follow-redirects true
                    :throw-exceptions false
                    :as :stream }
-         response (some identity (lazy-seq [(load-from-cache req)
-                                            @(http/request out-req)]))
+        response (or (load-from-cache req) @(http/request out-req))
          _ (log/debug "orig-response: " response)
 				 body (get-body-as-string response )
          _ (log/debug "body-from-response " body)
@@ -148,12 +158,13 @@
        body)))
 
 (def dev-handler
-  (-> #'proxy-route
-      (wrap-json-body {:keywords? true})
-      wrap-reload
-      wrap-keyword-params
-      logger/wrap-with-logger
-      (wrap-trace :header :ui)))
+  (let [_ (onelog.core/set-debug!) ]
+    (-> #'proxy-route
+       (wrap-json-body {:keywords? true})
+       wrap-reload
+       wrap-keyword-params
+       logger/wrap-with-logger
+       (wrap-trace :header :ui))))
 
 (def handler
   (-> proxy-route

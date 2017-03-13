@@ -1,36 +1,27 @@
 (ns eti.views
     (:require [re-frame.core :as re-frame]))
 
-
-;; home
-
 (defn home-panel []
-  (let [name (re-frame/subscribe [:name])]
+  (let [data (re-frame/subscribe [:proxy-data])]
     (fn []
-      [:div (str "Hello from " @name ". This is the Home Page.")
-       [:div [:a {:href "#/about"} "go to About Page"]]])))
-
-
-;; about
-
-(defn about-panel []
-  (fn []
-    [:div "This is the About Page."
-     [:div [:a {:href "#/"} "go to Home Page"]]]))
-
-
-;; main
+      [:div (str @data) ])))
 
 (defn- panels [panel-name]
   (case panel-name
     :home-panel [home-panel]
-    :about-panel [about-panel]
     [:div]))
 
 (defn show-panel [panel-name]
   [panels panel-name])
 
 (defn main-panel []
-  (let [active-panel (re-frame/subscribe [:active-panel])]
+  (let [active-panel :home-panel]
     (fn []
-      [show-panel @active-panel])))
+      [show-panel active-panel])))
+
+(defn top-panel
+  []
+  (let [ready?  (re-frame/subscribe [:initialised?])]
+    (if-not @ready?
+      [:div "Initialising ..."]
+      [main-panel])))

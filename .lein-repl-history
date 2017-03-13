@@ -156,3 +156,23 @@ exit
 (type (<!! (k/get-in store ["/foo?test"])))
 (<!! (k/get-in store ["/foo?test"]))
 (type (<!! (k/get-in store ["/foo?test"])))
+:w
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+(ns test-db (:require [konserve.filestore :as fs] [konserve.core :as k] [clojure.core.async :as async :refer [<!!]]))
+(def store (<!! (fs/new-fs-store "resources/store")))
+(<!! (fs/list-keys store))
+exi
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+jj 
+w
+:W
+(onelog.core/set-debug!)

@@ -3,11 +3,12 @@
     (:require [re-frame.core :as re-frame]))
 
 (re-frame/reg-sub
- :name
+ :proxy-data
  (fn [db]
-   (:name db)))
+   (:proxy-data db)))
 
-(re-frame/reg-sub
- :active-panel
- (fn [db _]
-   (:active-panel db)))
+(re-frame/reg-sub        ;; we can check if there is data
+  :initialised?          ;; usage (subscribe [:initialised?])
+  (fn  [db _]
+    (not (empty? (:proxy-data db)))))
+
