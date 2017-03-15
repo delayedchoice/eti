@@ -46,7 +46,7 @@
   :figwheel {:css-dirs ["resources/public/css"]
              :server-logfile false
 ;             :server-port 3449
-             ;:ring-handler eti.handler/dev-handler
+             ;:ring-handler eti.handler/proxy-handler
              }
 
   :less {:source-paths ["less"]
@@ -63,7 +63,7 @@
                    [lein-doo "0.1.7"]]
     :source-paths ["src/cljs"]
     }
-   :uberjar {:resource-paths ["resources"]}
+;   :uberjar {:resource-paths ["resources"]}
    }
 
   :cljsbuild
@@ -102,7 +102,7 @@
   :aot [eti.server]
 
   :uberjar-name "eti.jar"
-
+  :uberjar-exclusions [#"/*proxy-store*/" #"/*test*/"]
   :prep-tasks [["cljsbuild" "once" "min"] ["less" "once"] "compile"]
 
   )

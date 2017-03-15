@@ -19,9 +19,10 @@
             [clojure.core.async :as async :refer [<!!]]
             [ring.middleware.json :refer [wrap-json-body]]
             [config.core :refer [env]]
+            [ring.util.response :as resp]
             ))
 
-(def cache (<!! (fs/new-fs-store "store")))
+(def cache (<!! (fs/new-fs-store "proxy-store")))
 
 (defn store [id v]
   (<!! (k/assoc-in cache [id] v)))
@@ -140,7 +141,7 @@
   :new? (fn [ctx] (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache))))))
 
 (defroutes web-app-route
-  (GET "/" []  (slurp "resources/public/index.html") )
+  (GET "/" [] (resp/resource-response "index.html" {:root "public"}))
   (resources "/"))
 
 (defroutes proxy-route
