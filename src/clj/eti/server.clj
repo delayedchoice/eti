@@ -6,7 +6,12 @@
 
 (defn -main [& args]
    (let [port (Integer/parseInt (or (env :port) "3000"))]
-     (run-jetty dev-handler {:port port :join? false})))
+     (run-jetty dev-handler {
+                            ; :response-header-size 819200
+                            ; :output-buffer-size 99999999
+                            ; :request-header-size 81920
+                             :port port
+                             :join? false})))
 
 
 

@@ -1,14 +1,19 @@
 (ns eti.subs
     (:require-macros [reagent.ratom :refer [reaction]])
-    (:require [re-frame.core :as re-frame]))
+    (:require [re-frame.core :as rf]))
 
-(re-frame/reg-sub
+(rf/reg-sub
  :proxy-data
  (fn [db]
    (:proxy-data db)))
 
-(re-frame/reg-sub        ;; we can check if there is data
-  :initialised?          ;; usage (subscribe [:initialised?])
+(rf/reg-sub
+ :current-detail
+ (fn [db]
+   (:current-detail db)))
+
+(rf/reg-sub
+  :initialised?
   (fn  [db _]
     (not (empty? (:proxy-data db)))))
 

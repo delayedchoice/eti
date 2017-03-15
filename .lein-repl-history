@@ -175,4 +175,29 @@ exit
 jj 
 w
 :W
-(onelog.core/set-debug!)
+(onelog.core/set-debug!)/urjkj
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+ exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+j
+(start-figwheel!)
+(ns test-db (:require [konserve.filestore :as fs] [konserve.core :as k] [clojure.core.async :as async :refer [<!!]]))
+(def store (<!! (fs/new-fs-store "resources/store")))
+(<!! (k/assoc-in store ["http://localhost:3100/eti/favicon.ico"] "{:link "blah" :entry {:options "blah"}}" ))
+(<!! (k/assoc-in store ["http://localhost:3100/eti/favicon.ico"] "{:link \"blah\" :entry {:options \"blah\"}}" ))
+(<!! (fs/list-keys store))
+(def store (<!! (fs/new-fs-store "store")))
+(<!! (fs/list-keys store))
+(<!! (k/assoc-in store ["/favicon2.ico"] "{:link \"blah\" :entry {:options \"blah\"}}" ))
+(<!! (fs/list-keys store))
+(<!! (k/assoc-in store ["/favicon2.ico"] {:link \"blah\" :entry {:options \"blah\"}} ))
+(<!! (k/assoc-in store ["/favicon2.ico"] {:link "blah" :entry {:options "blah"}} ))

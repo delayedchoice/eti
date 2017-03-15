@@ -18,9 +18,10 @@
             [clojure.data.json :as json]
             [clojure.core.async :as async :refer [<!!]]
             [ring.middleware.json :refer [wrap-json-body]]
+            [config.core :refer [env]]
             ))
 
-(def cache (<!! (fs/new-fs-store "resources/store")))
+(def cache (<!! (fs/new-fs-store "store")))
 
 (defn store [id v]
   (<!! (k/assoc-in cache [id] v)))
@@ -110,7 +111,7 @@
   :location #(build-list-entry-url (:request %) (::id %))
   :handle-ok #(ring-response {:data  (map (fn [id] (let [id (str id)
                                                           id (subs id 3 (- (count id) 2))
-                                                          _ (log/debug "id " id)]
+                                                          _ (log/debug "id: " id)]
                                                       (str (build-list-entry-url (get % :request) id))))
                                            (<!! (fs/list-keys cache)) )}
                             {:headers {"Access-Control-Allow-Origin" "*"}} ))
@@ -138,12 +139,16 @@
                           {:headers {"Access-Control-Allow-Origin" "*"}}))
   :new? (fn [ctx] (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache))))))
 
+(defroutes web-app-route
+  (GET "/" []  (slurp "resources/public/index.html") )
+  (resources "/"))
+
 (defroutes proxy-route
   (ANY "/eti/*" [] entry-resource)
   (ANY "/eti" [] list-resource)
   (rfn req
     (let [out-req {:method (:request-method req)
-                   :url (build-proxy-url "localhost" "2999" req)
+                   :url (build-proxy-url (or (env :proxy-target-host) "cnn.com") (or (env :proxy-target-port) "80") req)
                    :follow-redirects true
                    :throw-exceptions false
                    :as :stream }
@@ -164,7 +169,7 @@
        wrap-reload
        wrap-keyword-params
        logger/wrap-with-logger
-       (wrap-trace :header :ui))))
+       #_(wrap-trace :header :ui))))
 
 (def handler
   (-> proxy-route

@@ -21,6 +21,7 @@
                  [io.replikativ/konserve "0.4.8"]
                  [org.clojure/tools.logging "0.3.1"]
 								 [day8.re-frame/http-fx "0.1.3"]
+                 [re-com "2.0.0"]
                  [ring/ring-json "0.4.0"]
                  ]
 
@@ -30,6 +31,7 @@
 
 
   :ring {:handler eti.handler/dev-handler
+         :port 3100
          :nrepl {:start? true
                  :port 9998}}
   :min-lein-version "2.5.3"
@@ -43,7 +45,7 @@
   :figwheel {:css-dirs ["resources/public/css"]
              :server-logfile false
 ;             :server-port 3449
-            ; :ring-handler eti.handler/dev-handler
+             ;:ring-handler eti.handler/dev-handler
              }
 
   :less {:source-paths ["less"]

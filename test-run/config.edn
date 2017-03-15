@@ -1,0 +1,3 @@
+{:port "4000"
+ :proxy-target-port "80"
+ :proxy-target-host "cnn.com"}
