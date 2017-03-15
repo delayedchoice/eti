@@ -201,3 +201,12 @@ j
 (<!! (fs/list-keys store))
 (<!! (k/assoc-in store ["/favicon2.ico"] {:link \"blah\" :entry {:options \"blah\"}} ))
 (<!! (k/assoc-in store ["/favicon2.ico"] {:link "blah" :entry {:options "blah"}} ))
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)

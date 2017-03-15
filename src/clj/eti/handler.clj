@@ -114,7 +114,7 @@
                                                           _ (log/debug "id: " id)]
                                                       (str (build-list-entry-url (get % :request) id))))
                                            (<!! (fs/list-keys cache)) )}
-                            {:headers {"Access-Control-Allow-Origin" "*"}} ))
+                             {:headers {"Access-Control-Allow-Origin" "*"}} ))
 
 (defresource entry-resource
   :uri-too-long? #(parse-id %)
@@ -162,14 +162,16 @@
          _ (log/debug "inserted-cache-response: " cache-response)]
        body)))
 
-(def dev-handler
-  (let [_ (onelog.core/set-debug!) ]
+(def proxy-handler
     (-> #'proxy-route
        (wrap-json-body {:keywords? true})
        wrap-reload
        wrap-keyword-params
        logger/wrap-with-logger
-       #_(wrap-trace :header :ui))))
+       #_(wrap-trace :header :ui)))
+
+(def web-app-handler
+    (-> #'web-app-route))
 
 (def handler
   (-> proxy-route

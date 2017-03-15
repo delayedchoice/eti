@@ -2,7 +2,9 @@
     (:require [re-frame.core :as re-frame]
 							[ajax.core :as ajax]
       			  [day8.re-frame.http-fx]
-              [eti.db :as db]))
+              [eti.db :as db]
+              [cljs.pprint :as pp]
+              ))
 
 (re-frame/reg-event-db
   :bad-response
@@ -30,7 +32,7 @@
     (let [data (js->clj response)
           e    (:entry data)]
       (-> db
-          (assoc-in [:current-detail] (with-out-str (cljs.pprint/pprint e)))))))
+          (assoc-in [:current-detail] (with-out-str (pp/pprint e)))))))
 
 (re-frame/reg-event-fx
   :fetch-detail

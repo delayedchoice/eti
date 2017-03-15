@@ -30,10 +30,11 @@
             [lein-less "1.7.5"]]
 
 
-  :ring {:handler eti.handler/dev-handler
+  :ring {:handler eti.handler/proxy-handler
          :port 3100
          :nrepl {:start? true
                  :port 9998}}
+
   :min-lein-version "2.5.3"
 
   :source-paths ["src/clj"]
@@ -61,7 +62,9 @@
                    [lein-figwheel "0.5.8"]
                    [lein-doo "0.1.7"]]
     :source-paths ["src/cljs"]
-    }}
+    }
+   :uberjar {:resource-paths ["resources"]}
+   }
 
   :cljsbuild
   {:builds
@@ -81,6 +84,7 @@
      :source-paths ["src/cljs"]
      :compiler     {:main            eti.core
                     :output-to       "resources/public/js/compiled/app.js"
+                    :externs        ["resources/public/js/compiled/app.js"]
                     :optimizations   :advanced
                     :closure-defines {goog.DEBUG false}
                     :pretty-print    false}}
@@ -92,12 +96,13 @@
                     :output-dir    "resources/public/js/compiled/test/out"
                     :optimizations :none}}
     ]}
+
   :main eti.server
 
   :aot [eti.server]
 
   :uberjar-name "eti.jar"
 
-  :prep-tasks [#_["cljsbuild" "once" "min"] "compile"]
+  :prep-tasks [["cljsbuild" "once" "min"] ["less" "once"] "compile"]
 
   )
