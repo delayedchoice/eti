@@ -5,20 +5,17 @@ body {
 html, body, .container-fluid, .row {
     height: 100%;
 }
+
 .detail {
   background-color: #FFFFF;
   z-index: 1000;
+  max-height: 400px;
+  overflow: auto;
 }
 
 .detail-entry {
 	white-space: nowrap;
   overflow: hidden;
-  float: left;
   text-overflow: ellipsis;
-  max-width: 95%;
+  max-width: 100%;
 }
-
-.sidebar {
-  background-color: #CCCCCC;
-}
-

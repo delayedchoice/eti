@@ -216,3 +216,25 @@ exit
 exit
    (use 'figwheel-sidecar.repl-api)
 (start-figwheel!)
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+ l
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(ns test-db (:require [konserve.filestore :as fs] [konserve.core :as k] [clojure.core.async :as async :refer [<!!]]))
+(def store (<!! (fs/new-fs-store "proxy-store")))
+(<!! (fs/list-keys store))
+exit
+   (use 'figwheel-sidecar.repl-api)
+(start-figwheel!)
+(onelog.core/set-debug!)/urjkj
+(onelog.core/set-debug!)
+(<!! (k/assoc-in store ["/favicon2.ico"] {:link "blah" :entry {:options "blah"}} ))
+(ns test-db (:require [konserve.filestore :as fs] [konserve.core :as k] [clojure.core.async :as async :refer [<!!]]))
+(<!! (k/assoc-in store ["/favicon2.ico"] {:link "blah" :entry {:options "blah"}} ))
+(def store (<!! (fs/new-fs-store "proxy-store")))
+(<!! (k/assoc-in store ["/favicon2.ico"] {:link "blah" :entry {:options "blah"}} ))
+(onelog.core/set-info!)
+(<!! (k/assoc-in store ["/favicon2.ico"] {:link "blah" :entry {:options "blah"}} ))

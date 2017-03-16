@@ -1,5 +1,10 @@
 (ns eti.views
-    (:require [re-frame.core :as rf]))
+    (:require [cljs.pprint :as pp]
+              [re-frame.core :as rf]))
+
+(defn error-msg []
+  (let [msg (rf/subscribe [:error-message])]
+        (when @msg [:div.alert.alert-danger.col-sm-12 {:role :alert} @msg] )))
 
 (defn nav-bar []
  [:nav.navbar.navbar-inverse
@@ -16,25 +21,30 @@
      [:li.active [:a {:href "#"} "About"]]]]]])
 
 (defn side-bar []
-  (let [boxes (rf/subscribe [:proxy-data])]
-    [:div.col-sm-4
-     [:div.nav.nav-sidebar.sidebar
-     (for [k  (keys @boxes)]
-        ^{:key k}
-        [:div
-         [:p [:a.detail-entry {:data-toggle "tooltip"
-                               :data-container "body"
-                               :title k
-                               :on-click #(rf/dispatch [:fetch-detail k])}
-              k]]])]]))
+    (let [data @(rf/subscribe [:proxy-data])]
+      [:div.col-sm-4
+        [:div.nav.nav-sidebar.sidebar.list-group
+        (doall
+          (for [k  (keys data)]
+            ^{:key k}
+            [:a {:data-toggle "tooltip"
+                 :data-container "body"
+                 :class (get data k)
+                 :title k
+                 :on-click #(rf/dispatch [:fetch-detail k])} k]))]]))
 
 (defn detail-panel []
   (let [detail (rf/subscribe [:current-detail])]
-     [:div.col-sm-offset-4.detail @detail]))
+    (fn [] [:input.col-sm-offset-4.detail {:type "text"
+                                           :value (with-out-str (pp/pprint @detail))
+                                           :on-change #(rf/dispatch [:content-edited (cljs.reader/read-string (-> % .-target .-value))])} ] )))
+
+(defn submit-button []
+  [:button.btn.btn-primary {:on-click #(rf/dispatch [:put-detail])} ])
 
 (defn main-panel []
   [:title "ETI"]
-    [:div [nav-bar] [side-bar] [detail-panel]])
+    [:div [nav-bar] [error-msg] [side-bar] [detail-panel] [submit-button]])
 
 (defn top-panel
   []

@@ -13,7 +13,7 @@
       (-> db
           (assoc :loading? false)
           (assoc :intialized? true)
-          (assoc :proxy-data (str "Bad Response: " (js->clj response))))))
+          (assoc :error-message (str "Bad Response: " (js->clj response))))))
 
 (re-frame/reg-event-db
   :process-response
@@ -23,7 +23,7 @@
       (-> db
          (assoc :loading? false)
          (assoc :intialized? true)
-         (assoc :proxy-data (into {} (for [d data] [d nil])))))))
+         (assoc :proxy-data (into {} (for [d data] [d "detail-entry list-group-item"])))))))
 
 (re-frame/reg-event-db
   :process-detail-response
@@ -32,7 +32,13 @@
     (let [data (js->clj response)
           e    (:entry data)]
       (-> db
-          (assoc-in [:current-detail] (with-out-str (pp/pprint e)))))))
+          (assoc-in [:current-detail] e)))))
+
+(re-frame/reg-event-db
+  :process-put-response
+  (fn [db [_ response]]
+      (-> db
+          (assoc-in [:error-message] nil))))
 
 (re-frame/reg-event-fx
   :fetch-detail
@@ -42,7 +48,32 @@
                     :response-format (ajax/json-response-format {:keywords? true})
                     :on-success      [:process-detail-response]
                     :on-failure      [:bad-response]}
-       :db  db}))
+       :db  (-> (if (:selected-url db)
+                    (assoc-in db [:proxy-data (:selected-url db)] "detail-entry list-group-item")
+                    db)
+                (assoc-in [:selected-url] url)
+                (assoc-in [:proxy-data url] "active detail-entry list-group-item" ))}))
+
+(re-frame/reg-event-db
+  :content-edited
+  (fn
+    [db [_ content]]
+      (let [_ (prn "content: " content)]
+        (assoc db :current-detail content))))
+
+(re-frame/reg-event-fx
+  :put-detail
+  (fn
+    [{db :db} _]
+    {:http-xhrio {:method          :put
+                  :uri             (:selected-url db)
+                  :params          (:current-detail db)
+                  :timeout         5000
+                  :format          (ajax/json-request-format)
+                  :response-format (ajax/json-response-format {:keywords? true})
+                  :on-success      [:process-put-response]
+                  :on-failure      [:bad-response]}
+     :db  (assoc db :loading? true)}))
 
 (re-frame/reg-event-fx
   :collect-data

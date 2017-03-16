@@ -36,12 +36,12 @@
 
 (defn get-body-as-string [req]
   (if-let [body (get-in req [:body])]
-    (let [_ (log/debug "raw-body: " body)
-          _ (log/debug "type: " (type body))
+    (let [_ (log/info "raw-body: " body)
+          _ (log/info "type: " (type body))
           rv (condp instance? body
                     java.lang.String body
                     (slurp (io/reader body)))
-          _ (log/debug "extracted-body: " rv)]
+          _ (log/info "extracted-body: " rv)]
       rv)))
 
 (defn parse-id [ctx]
@@ -56,7 +56,7 @@
     (when (#{:put :post} (get-in ctx [:request :request-method]))
      (try
        (if-let [body (get-in (:request ctx ) [:body])]
-         (let [_ (log/debug "body-type: " (type body))
+         (let [_ (log/info "body-type: " (type body))
                data body #_(json/read-str body :key-fn keyword)]
            [false {ky data}])
          {:message "No body"})
@@ -97,7 +97,7 @@
 
 (defn load-from-cache [req]
   (let [hit (<!! (k/get-in cache [(build-path-and-query-string req)]))
-        _ (log/debug "from-cache: " hit)]
+        _ (log/info "from-cache: " hit)]
     hit))
 
 (defresource list-resource
@@ -112,33 +112,52 @@
   :location #(build-list-entry-url (:request %) (::id %))
   :handle-ok #(ring-response {:data  (map (fn [id] (let [id (str id)
                                                           id (subs id 3 (- (count id) 2))
-                                                          _ (log/debug "id: " id)]
+                                                          _ (log/info "id: " id)]
                                                       (str (build-list-entry-url (get % :request) id))))
                                            (<!! (fs/list-keys cache)) )}
                              {:headers {"Access-Control-Allow-Origin" "*"}} ))
 
 (defresource entry-resource
   :uri-too-long? #(parse-id %)
-  :allowed-methods [:get :put :delete]
+  :allowed-methods [:get :put :delete :options]
   :known-content-type? #(check-content-type % ["application/json"])
-  :exists? (fn [ctx]
-             (let [_ (log/debug "id-for-exists: " (::id ctx))
+  :new? (fn [ctx]
+             (let [_ (log/info "id-for-new " (::id ctx))
                    e (<!! (k/get-in cache [(::id ctx)]))
-                   _ (log/debug "entity-from-cache: " e)]
+                   _ (log/info "entity-from-cache-for-new: " e)]
+                    (nil? e)))
+  :exists? (fn [ctx]
+             (let [_ (log/info "id-for-exists: " (::id ctx))
+                   e (<!! (k/get-in cache [(::id ctx)]))
+                   _ (log/info "entity-from-cache: " e)]
                     (if-not (nil? e)
                       {::entry e})))
-  :existed? (fn [ctx] (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache)))))
+  :existed? (fn [ctx] (let [resp (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache))))
+                            - (log/info "existed? " resp)]))
   :available-media-types ["application/json"]
-  :handle-ok (fn [ctx] (ring-response {:link (str (build-entry-url (get ctx :request) (::id ctx)))
-                                       :entry (ctx ::entry)}
-                                      {:headers {"Access-Control-Allow-Origin" "*"}}))
+  :handle-ok (fn [ctx] (let [_ (log/info "ok-entry: " (ctx ::entry))]
+                         (ring-response {:link (str (build-entry-url (get ctx :request) (::id ctx)))
+                                        :entry (ctx ::entry)}
+                                       {:headers {"Access-Control-Allow-Origin" "*"}})))
   :delete! (fn [ctx] (k/assoc-in cache [(::id ctx)] nil))
   :malformed? #(parse-json % ::data)
   :can-put-to-missing? false
   :put! #(let [e (second (<!! (k/assoc-in cache [(::id %)] (::data %) )))]
-           (ring-response {:entry e}
-                          {:headers {"Access-Control-Allow-Origin" "*"}}))
-  :new? (fn [ctx] (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache))))))
+           (let [_ (log/info "put! entry" e)]
+             (ring-response {:entry e}
+                            {:headers {"Access-Control-Allow-Origin" "*"}})))
+  ;:new? (fn [ctx] (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache)))))
+  )
+
+(defn allow-cross-origin
+  "middleware function to allow crosss origin"
+  [handler]
+  (fn [request]
+   (let [response (handler request)]
+    (-> response
+        (assoc-in [:headers "Access-Control-Allow-Headers"] "Content-Type, X-Requested-With")
+        (assoc-in [:headers "Access-Control-Allow-Origin"] "*")
+        (assoc-in [:headers "Access-Control-Allow-Methods"] "GET,PUT,POST,DELETE")))))
 
 (defroutes web-app-route
   (GET "/" [] (resp/resource-response "index.html" {:root "public"}))
@@ -154,13 +173,13 @@
                    :throw-exceptions false
                    :as :stream }
         response (or (load-from-cache req) @(http/request out-req))
-         _ (log/debug "orig-response: " response)
+         _ (log/info "orig-response: " response)
 				 body (get-body-as-string response )
-         _ (log/debug "body-from-response " body)
+         _ (log/info "body-from-response " body)
          response (assoc response :body body)
-         _  (log/debug "response-to-store: " response)
+         _  (log/info "response-to-store: " response)
          cache-response (<!! (k/assoc-in cache [(build-path-and-query-string req)] response))
-         _ (log/debug "inserted-cache-response: " cache-response)]
+         _ (log/info "inserted-cache-response: " cache-response)]
        body)))
 
 (def proxy-handler
@@ -169,6 +188,7 @@
        wrap-reload
        wrap-keyword-params
        logger/wrap-with-logger
+       allow-cross-origin
        #_(wrap-trace :header :ui)))
 
 (def web-app-handler

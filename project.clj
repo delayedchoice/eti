@@ -57,7 +57,8 @@
    {:dependencies [[binaryage/devtools "0.8.2"]
                    [com.cemerick/piggieback "0.2.1"]
                    [figwheel-sidecar "0.5.8"] ]
-    :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+    :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]
+                   :timeout 120000}
     :plugins      [[cider/cider-nrepl "0.12.0"]
                    [lein-figwheel "0.5.8"]
                    [lein-doo "0.1.7"]]
