@@ -32,12 +32,14 @@
     (let [data (js->clj response)
           e    (:entry data)]
       (-> db
+          (assoc-in [:original-detail] e)
           (assoc-in [:current-detail] e)))))
 
 (re-frame/reg-event-db
   :process-put-response
   (fn [db [_ response]]
       (-> db
+          (assoc-in [:original-detail] (db :current-detail))
           (assoc-in [:error-message] nil))))
 
 (re-frame/reg-event-fx
@@ -60,6 +62,12 @@
     [db [_ content]]
       (let [_ (prn "content: " content)]
         (assoc db :current-detail content))))
+
+(re-frame/reg-event-db
+  :cursor-moved
+  (fn
+    [db [_ pos]]
+        (assoc db :cursor-position pos)))
 
 (re-frame/reg-event-fx
   :put-detail

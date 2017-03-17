@@ -50,7 +50,7 @@
              }
 
   :less {:source-paths ["less"]
-         :target-path  "resources/public/css"}
+         :target-path  "resources/public/css/compiled"}
 
   :profiles
   {:dev
