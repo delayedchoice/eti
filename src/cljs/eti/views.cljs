@@ -11,43 +11,43 @@
  [:nav.navbar.navbar-inverse
   [:div.container-fluid
    [:div.navbar-header
-    [:button.navbar-toggle
-     {:type "button" :data-toggle "collapse" :data-target "#myNavbar"}
-     [:span.icon-bar]
-     [:span.icon-bar]
-     [:span.icon-bar]]
-    [:a.navbar-brand {:href "#"} "ETI"]]
-   [:div.collapse.navbar-collapse {:id "myNavbar"}
-    [:ul.nav.navbar-nav
-     [:li.active [:a {:href "#"} "About"]]]]]])
+    [:a.navbar-brand {:href "#"} "Proxy Musik"]]
+   [:ul.nav.navbar-nav.navbar-right
+    [:li [:a {:on-click  #(rf/dispatch [:clear-proxy-data])}
+     [:span.glyphicon.glyphicon-trash] " Clear"]]]]])
 
 (defn side-bar []
-    (let [data @(rf/subscribe [:proxy-data])]
-      [:div.col-sm-4
-        [:div.nav.nav-sidebar.sidebar.list-group
-        (doall
-          (for [k  (keys data)]
-            ^{:key k}
-            [:a {:data-toggle "tooltip"
-                 :data-container "body"
-                 :class (get data k)
-                 :title k
-                 :on-click #(rf/dispatch [:fetch-detail k])} k]))]]))
+    (let [data (rf/subscribe [:proxy-data])]
+      (if (empty? @data)
+            [:div.col-sm-4 {:role :alert} [:label.alert.alert-info "No proxied routes. Check proxy config?"]]
+            [:div.col-sm-4
+             [:div.nav.nav-sidebar.sidebar.list-group
+               (doall
+                 (for [k  (keys @data)]
+                   ^{:key k}
+                   [:a {:data-toggle "tooltip"
+                        :data-container "body"
+                        :class (get @data k)
+                        :title k
+                        :on-click #(rf/dispatch [:fetch-detail k])}
+                    [:span.glyphicon.glyphicon-remove-sign.icon
+                     {:on-click #(rf/dispatch [:delete-proxied-route])}] k ]))]])))
 
 (defn detail-text-area[]
   (let [text (rf/subscribe [:current-detail])
         pos  (rf/subscribe [:cursor-position]) ]
     (reagent/create-class
      {:component-did-update
-      #(.setSelectionRange (js/document.getElementById "detail-content") @pos @pos)
-     :display-name "detail-text-area"
+        #(.setSelectionRange (js/document.getElementById "detail-content") @pos @pos)
+      :display-name "detail-text-area"
       :reagent/render
       (fn [id]
-        (let [clazz (rf/subscribe [:content-detail-class])] [:textarea
+        (let [clazz (rf/subscribe [:content-detail-class])]
+          [:textarea
           {:type "text"
            :class @clazz
            :id "detail-content"
-           :value (with-out-str (pp/pprint @text))
+           :value (str @text)
            :on-change #(let [content (cljs.reader/read-string (-> % .-target .-value))
                              cursor-position (-> % .-target .-selectionStart)]
                          (rf/dispatch [:content-edited content])
@@ -70,7 +70,7 @@
 
 (defn top-panel
   []
-  (let [ready?  (rf/subscribe [:initialised?])]
+  (let [ready?  (rf/subscribe [:initialized?])]
     (if-not @ready?
-      [:div "... Initialising ..."]
+      [:div "... Initializing ..."]
       [main-panel])))

@@ -46,7 +46,7 @@
    (:selected-url db)))
 
 (rf/reg-sub
-  :initialised?
+  :initialized?
   (fn  [db _]
-    (not (empty? (:proxy-data db)))))
+    (:initialized? db)))
 

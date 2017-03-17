@@ -1,25 +1,26 @@
 (ns eti.handler
   (:import java.net.URL)
-  (:require [ring.middleware.multipart-params :refer [wrap-multipart-params]]
-            [ring.adapter.jetty]
+  (:require
+    ;[ring.middleware.multipart-params :refer [wrap-multipart-params]]
+;            [ring.adapter.jetty]
             [ring.middleware.logger :as logger]
             [ring.middleware.reload :refer [wrap-reload]]
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
+            [ring.middleware.json :refer [wrap-json-body]]
+            [ring.util.response :as resp]
             [compojure.core :refer [rfn GET POST defroutes ANY] ]
             [compojure.route :refer [resources]]
             [liberator.core :refer [resource defresource]]
             [liberator.dev :refer [wrap-trace]]
+            [liberator.representation :refer [ring-response]]
             [clojure.tools.logging :as log]
-            [liberator.representation :refer [Representation ring-response]]
             [clojure.java.io :as io]
+            [clojure.data.json :as json]
+            [clojure.core.async :as async :refer [<!!]]
             [org.httpkit.client :as http]
             [konserve.filestore :as fs]
             [konserve.core :as k]
-            [clojure.data.json :as json]
-            [clojure.core.async :as async :refer [<!!]]
-            [ring.middleware.json :refer [wrap-json-body]]
             [config.core :refer [env]]
-            [ring.util.response :as resp]
             ))
 
 (def cache (<!! (fs/new-fs-store "proxy-store")))
@@ -102,12 +103,17 @@
 
 (defresource list-resource
   :available-media-types ["application/json"]
-  :allowed-methods [:get :post]
+  :allowed-methods [:get :post :delete :options]
   :known-content-type? #(check-content-type % ["application/json"])
   :malformed? #(parse-json % ::body)
   :post! #(let [id (build-path-and-query-string (:request %))]
             (<!! (k/assoc-in cache [id] (get (::body %))))
             {::id id})
+  :delete! (fn [ctx]
+             (let [kys (<!! (fs/list-keys cache))]
+              (doseq [k kys]
+                (let [_ (log/info "dissocing: " k)]
+                  (<!! (k/dissoc cache (first k) ))))))
   :post-redirect? true
   :location #(build-list-entry-url (:request %) (::id %))
   :handle-ok #(ring-response {:data  (map (fn [id] (let [id (str id)
@@ -139,7 +145,7 @@
                          (ring-response {:link (str (build-entry-url (get ctx :request) (::id ctx)))
                                         :entry (ctx ::entry)}
                                        {:headers {"Access-Control-Allow-Origin" "*"}})))
-  :delete! (fn [ctx] (k/assoc-in cache [(::id ctx)] nil))
+  :delete! (fn [ctx] (k/dissoc cache (::id ctx)))
   :malformed? #(parse-json % ::data)
   :can-put-to-missing? false
   :put! #(let [e (second (<!! (k/assoc-in cache [(::id %)] (::data %) )))]
