@@ -5,7 +5,9 @@
 
 (defn error-msg []
   (let [msg (rf/subscribe [:error-message])]
-        (when @msg [:div.alert.alert-danger.col-sm-12 {:role :alert} @msg] )))
+        (when @msg [:div.alert.alert-danger.col-sm-12 {:role :alert}
+                    [:span.glyphicon.glyphicon-remove-sign.icon
+                        {:on-click #(rf/dispatch [:error-message-dismissed])}] @msg] )))
 
 (defn nav-bar []
  [:nav.navbar.navbar-inverse
@@ -17,21 +19,21 @@
      [:span.glyphicon.glyphicon-trash] " Clear"]]]]])
 
 (defn side-bar []
-    (let [data (rf/subscribe [:proxy-data])]
+  (fn [] (let [data (rf/subscribe [:proxy-data])]
       (if (empty? @data)
-            [:div.col-sm-4 {:role :alert} [:label.alert.alert-info "No proxied routes. Check proxy config?"]]
-            [:div.col-sm-4
-             [:div.nav.nav-sidebar.sidebar.list-group
-               (doall
-                 (for [k  (keys @data)]
-                   ^{:key k}
-                   [:a {:data-toggle "tooltip"
-                        :data-container "body"
-                        :class (get @data k)
-                        :title k
-                        :on-click #(rf/dispatch [:fetch-detail k])}
-                    [:span.glyphicon.glyphicon-remove-sign.icon
-                     {:on-click #(rf/dispatch [:delete-proxied-route])}] k ]))]])))
+        [:div.col-sm-4 {:role :alert} [:label.alert.alert-info "No proxied routes. Check proxy config?"]]
+        [:div.col-sm-4
+         [:div.nav.nav-sidebar.sidebar.list-group
+          (doall
+            (for [k  (keys @data)]
+              ^{:key k}
+              [:a {:data-toggle "tooltip"
+                   :data-container "body"
+                   :class (get @data k)
+                   :title k
+                   :on-click #(rf/dispatch [:fetch-detail k])}
+               [:span.glyphicon.glyphicon-remove-sign.icon
+                {:on-click #(rf/dispatch [:delete-proxied-route k])}] k ]))]])) ))
 
 (defn detail-text-area[]
   (let [text (rf/subscribe [:current-detail])
@@ -65,8 +67,8 @@
    [:div [detail-text-area] [submit-button]]])
 
 (defn main-panel []
-  [:title "ETI"]
-    [:div [nav-bar] [error-msg] [:div.row [side-bar] [form-area]] ])
+    (let [clazz (rf/subscribe [:top-class])]
+      [:div [:div {:class @clazz}] [nav-bar] [error-msg] [:div.row [side-bar] [form-area]] ]))
 
 (defn top-panel
   []

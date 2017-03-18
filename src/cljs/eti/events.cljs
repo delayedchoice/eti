@@ -17,6 +17,14 @@
           (assoc :error-message (str "Bad Response: " (js->clj response))))))
 
 (rf/reg-event-db
+  :error-message-dismissed
+  (fn
+    [db _]
+      (-> db
+          (assoc :error-message nil))))
+
+
+(rf/reg-event-db
   :process-response
   (fn
     [db [_ response]]
@@ -35,6 +43,7 @@
     (let [data (js->clj response)
           e    (:entry data)]
       (-> db
+          (assoc :loading? false)
           (assoc-in [:original-detail] e)
           (assoc-in [:current-detail] e)))))
 
@@ -42,22 +51,29 @@
   :process-put-response
   (fn [db [_ response]]
       (-> db
+          (assoc :loading? false)
           (assoc-in [:original-detail] (db :current-detail))
           (assoc-in [:error-message] nil))))
 
 (rf/reg-event-db
   :process-delete-response
   (fn [db [_ response]]
-          (rf/dispatch [:collect-data])
-          db))
+		(let [db (-> (assoc-in db [:current-detail] nil)
+								 (assoc-in [:original-detail] nil)
+                 (assoc-in [:selected-url] nil)
+							   (assoc-in [:error-message] nil))]
+							   (rf/dispatch [:collect-data])
+								 db)))
 
 (rf/reg-event-db
   :process-clear-response
   (fn [db [_ response]]
       (-> db
+          (assoc :loading? false)
           (assoc-in [:current-detail] nil)
           (assoc-in [:original-detail] nil)
           (assoc-in [:proxy-data] nil)
+          (assoc-in [:selected-url] nil)
           (assoc-in [:error-message] nil))))
 
 (rf/reg-event-fx
@@ -71,6 +87,7 @@
        :db  (-> (if (:selected-url db)
                     (assoc-in db [:proxy-data (:selected-url db)] "detail-entry list-group-item")
                     db)
+                (assoc :loading? true)
                 (assoc-in [:selected-url] url)
                 (assoc-in [:proxy-data url] "active detail-entry list-group-item" ))}))
 
@@ -104,16 +121,20 @@
 (rf/reg-event-fx
   :delete-proxied-route
   (fn
-    [{db :db} _]
+    [{db :db} [_ url]]
     {:http-xhrio {:method          :delete
-                  :uri             (:selected-url db)
+                  :uri             url
                   ;:params          (:current-detail db)
                   :timeout         5000
                   :format          (ajax/json-request-format)
                   :response-format (ajax/json-response-format {:keywords? true})
                   :on-success      [:process-delete-response]
                   :on-failure      [:bad-response]}
-     :db  (assoc db :loading? true)}))
+     :db  (-> db
+              (dissoc url)
+              (assoc-in [:selected-url] nil)
+              (assoc :loading? true))}))
+
 (rf/reg-event-fx
   :clear-proxy-data
   (fn [{db :db} [_ url]]
@@ -127,6 +148,7 @@
                     (assoc-in db [:proxy-data (:selected-url db)] "detail-entry list-group-item")
                     db)
                 (assoc-in [:selected-url] url)
+                (assoc :loading? true?)
                 (assoc-in [:proxy-data url] "active detail-entry list-group-item" ))}))
 (rf/reg-event-fx
   :collect-data

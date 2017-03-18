@@ -205,4 +205,5 @@
       (wrap-json-body {:keywords? true})
       wrap-keyword-params
       logger/wrap-with-logger
-      wrap-multipart-params))
+     ; wrap-multipart-params
+      ))

@@ -50,3 +50,10 @@
   (fn  [db _]
     (:initialized? db)))
 
+(rf/reg-sub
+  :top-class
+  (fn  [db _]
+    (if (:loading? db)
+        "overlay"
+        "" )))
+
