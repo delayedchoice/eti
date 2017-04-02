@@ -8,7 +8,7 @@
             [ring.middleware.keyword-params :refer [wrap-keyword-params]]
             [ring.middleware.json :refer [wrap-json-body]]
             [ring.util.response :as resp]
-            [compojure.core :refer [rfn GET POST defroutes ANY] ]
+            [compojure.core :refer [rfn GET POST PUT defroutes ANY] ]
             [compojure.route :refer [resources]]
             [liberator.core :refer [resource defresource]]
             [liberator.dev :refer [wrap-trace]]
@@ -173,10 +173,18 @@
 (defroutes proxy-route
   (ANY "/eti/*" [] entry-resource)
   (ANY "/eti" [] list-resource)
+  (PUT "*" req (resp/redirect (build-proxy-url
+                            (or (env :proxy-target-host) "localhost")
+                            (or (env :proxy-target-port) "8280") req)
+                          ))
+  (POST "*" req (resp/redirect (build-proxy-url
+                            (or (env :proxy-target-host) "localhost")
+                            (or (env :proxy-target-port) "8280") req)
+                          ))
   (rfn req
     (let [out-req {:method (:request-method req)
                    :url (build-proxy-url (or (env :proxy-target-host) "localhost") (or (env :proxy-target-port) "8280") req)
-                   :headers (:headers req) 
+                   :headers (:headers req)
                    :follow-redirects true
                    :throw-exceptions false
                    :as :stream }
