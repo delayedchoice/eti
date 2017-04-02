@@ -130,12 +130,13 @@
   :new? (fn [ctx]
              (let [_ (log/info "id-for-new " (::id ctx))
                    e (<!! (k/get-in cache [(::id ctx)]))
-                   _ (log/info "entity-from-cache-for-new: " e)]
+                   _ (log/debug "entity-from-cache-for-new: " e)
+                   ]
                     (nil? e)))
   :exists? (fn [ctx]
              (let [_ (log/info "id-for-exists: " (::id ctx))
                    e (<!! (k/get-in cache [(::id ctx)]))
-                   _ (log/info "entity-from-cache: " e)]
+                   _ (log/debug "entity-from-cache: " e)]
                     (if-not (nil? e)
                       {::entry e})))
   :existed? (fn [ctx] (let [resp (nil? (some #{(::id ctx)} (<!! (fs/list-keys cache))))
@@ -174,7 +175,8 @@
   (ANY "/eti" [] list-resource)
   (rfn req
     (let [out-req {:method (:request-method req)
-                   :url (build-proxy-url (or (env :proxy-target-host) "cnn.com") (or (env :proxy-target-port) "80") req)
+                   :url (build-proxy-url (or (env :proxy-target-host) "localhost") (or (env :proxy-target-port) "8280") req)
+                   :headers (:headers req) 
                    :follow-redirects true
                    :throw-exceptions false
                    :as :stream }

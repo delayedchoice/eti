@@ -1,7 +1,8 @@
 (ns eti.views
     (:require [cljs.pprint :as pp]
               [reagent.core :as reagent]
-              [re-frame.core :as rf]))
+              [re-frame.core :as rf]
+              [cljs.reader :as reader]))
 
 (defn error-msg []
   (let [msg (rf/subscribe [:error-message])]
@@ -50,7 +51,7 @@
            :class @clazz
            :id "detail-content"
            :value (str @text)
-           :on-change #(let [content (cljs.reader/read-string (-> % .-target .-value))
+           :on-change #(let [content (reader/read-string (-> % .-target .-value))
                              cursor-position (-> % .-target .-selectionStart)]
                          (rf/dispatch [:content-edited content])
                          (rf/dispatch [:cursor-moved cursor-position]))}]))})))
